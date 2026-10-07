@@ -59,24 +59,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Looks through all 40 listings and returns the ones that match what the user is looking for, filtered by size and price if given.
+- **Inputs:** `description` (str) — the keywords from the user's query like "vintage graphic tee"; `size` (str or None) — size to filter by, case-insensitive, None means skip size filtering; `max_price` (float or None) — highest price to include, inclusive, None means no price limit.
+- **Returns:** A list of listing dicts sorted by how well they match, best first, capped at `config.SEARCH_RESULT_LIMIT`. Each dict has: `id`, `title`, `description`, `category`, `style_tags`, `size`, `condition`, `price`, `colors`, `brand`, `platform`. Note that `brand` can be None — a lot of thrift listings don't have one.
+- **When it has nothing:** Returns an empty list. Not None, not an error, just `[]`. The loop checks for this.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Takes the item the user found and their wardrobe and asks the model to suggest one or two outfits using pieces they already own.
+- **Inputs:** `new_item` (dict) — the listing dict for the item being considered; `wardrobe` (dict) — has an `items` key with a list of wardrobe item dicts, can be empty.
+- **Returns:** A non-empty string from the model with outfit ideas. If the wardrobe has items it names specific pieces. If the wardrobe is empty it gives general styling advice instead.
+- **When it has nothing:** If `wardrobe["items"]` is empty, still returns a string with general advice — not an empty string, not a crash.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Writes a short caption about the thrift find that sounds like something you'd actually post.
+- **Inputs:** `outfit` (str) — the suggestion string that came back from `suggest_outfit`; `new_item` (dict) — the listing dict for the item.
+- **Returns:** A 2–4 sentence string that mentions the item, its price, and its platform once each. Should vary between runs since temperature is > 0 and cache is off.
+- **When it has nothing:** If `outfit` is empty or just whitespace, returns a short message saying it couldn't make a card instead of crashing.
 
 ---
 
@@ -93,13 +93,13 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, write a message into `session["error"]` telling the user to try different keywords or loosen the filters, then return the session right there. Don't call `suggest_outfit` with nothing. If there are results, take the first one, put it in `session["selected_item"]`, and keep going.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** The query gets passed to the model with a prompt asking it to pull out three things — a description string, a size if one was mentioned, and a max price if one was mentioned. The model returns those as structured fields which go into `session["parsed"]`.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** `query` is set at the start → `parsed` gets filled after the model reads the query → `search_results` comes back from `search_listings` → `selected_item` is the first result → `outfit_suggestion` comes from `suggest_outfit` → `fit_card` comes from `create_fit_card`. If anything goes wrong early, `error` gets set and the later fields stay None.
 
 ---
 
