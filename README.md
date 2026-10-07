@@ -39,9 +39,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
-
-
+FitFindr is a thrift fashion recommendation agent. A user types a plain-English query — something like "vintage graphic tee under $30, size M" — and the agent searches 40 mock thrift listings, picks the best match, and then asks the model to suggest outfits using pieces the user already owns. It finishes by writing a short social media caption about the find. If nothing in the data matches the query it stops early and tells the user specifically what to change — the keywords, the size, or the price ceiling.
 
 ---
 
@@ -113,8 +111,30 @@
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
 
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   Here are 2 specific outfit combinations using the Y2K butterfly baby tee and pieces from your current wardrobe:
+
+**Outfit 1: Casual Y2K Streetwear**
+*   **Top:** Y2K Baby Tee — Butterfly Print
+*   **Bottoms:** Baggy straight-leg jeans, dark wash
+*   **Outerwear:** Black cropped zip hoodie
+*   **Shoes:** Chunky white sneakers
+*   *Why it works:* The fitted, cropped silhouette of the baby tee contrasts nicely with the baggy dark wash jeans for an authentic early-2000s look. Throwing the black cropped zip hoodie on top (left unzipped or partially zipped) pulls in the dark tones and keeps it casual.
+
+**Outfit 2: Soft Contrast Everyday Look**
+*   **Top:** Y2K Baby Tee — Butterfly Print
+*   **Bottoms:** Wide-leg khaki trousers
+*   **Accessories:** Brown leather belt
+*   **Outerwear:** Vintage black denim jacket
+*   **Shoes:** Black combat boots
+*   *Why it works:* The pink, purple, and white butterfly print pops against the neutral tan of the wide-leg khaki trousers. Defining the waist with the brown leather belt and grounding the softer top with rugged black combat boots and the vintage black denim jacket creates a balanced, effortless outfit.
+
+  Fit card: Obsessed with this Y2K butterfly baby tee because the fit is so ridiculously flattering and the print gives off major 2000s mall-goth-meets-sweetheart energy. It's listed on my depop right now for just $18.0 so you can live out all your low-rise denim and chunky sneaker dreams without breaking the bank. Grab it before I change my mind and keep it for myself!
+
+1 model calls this session, 2 served from cache, 101 prompt + 30 output tokens
 ```
 
 **The three tools, tested one at a time**
@@ -169,15 +189,15 @@ Just listed this graphic tee over on my depop for $24.0—grab it before I chang
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* Help writing the size-matching logic in `search_listings`. I described the problem — sizes in the data are inconsistent strings like "S/M", "XL (oversized)", "W30 L30", "US 9" — and asked how to filter without false matches.
+- *What came back:* A plain substring check like `size.lower() in listing_size.lower()`. That would match "s" inside "us 9" and "l" inside "xl", which would return shoes and XL items when someone asked for a small.
+- *What I changed:* Switched to a whole-word regex match using `re.search(r'\b' + re.escape(size_lower) + r'\b', listing_size)` so "M" only matches as a standalone token, not as part of another word.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* How to parse the user's query into description, size, and max_price inside the planning loop.
+- *What came back:* A suggestion to use regex to pull out size and price patterns from the string directly.
+- *What I changed:* Used the model instead, with a prompt that asks for JSON with three keys. Regex would break on queries phrased in unexpected ways; the model handles natural language variations like "around thirty dollars" or "fits like a medium" better than pattern matching would.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
