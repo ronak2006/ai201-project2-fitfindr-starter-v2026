@@ -120,18 +120,40 @@ $ python app.py ask '...'
 **The three tools, tested one at a time**
 
 ```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+$ python -c "from tools import search_listings; results = search_listings('graphic tee', max_price=30); print(f'{len(results)} results'); [print(f'  {r[\"title\"]} — \${r[\"price\"]}') for r in results]"
+7 results
+  Y2K Baby Tee — Butterfly Print — $18.0
+  Graphic Tee — 2003 Tour Bootleg Style — $24.0
+  Mesh Long-Sleeve Top — Black — $15.0
+  Vintage Band Tee — Faded Grey — $19.0
+  Low-Rise Cargo Pants — Khaki — $27.0
+  Oversized Crewneck Sweatshirt — Vintage Navy — $20.0
+  Vintage Graphic Hoodie — Faded Black — $26.0
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import load_listings, get_example_wardrobe; print(suggest_outfit(load_listings()[5], get_example_wardrobe()))"
+Here are two casual outfit combinations using the new graphic tee and pieces from your current wardrobe:
 
+**Outfit 1: Grunge Streetwear**
+*   **Top:** Graphic Tee — 2003 Tour Bootleg Style
+*   **Bottoms:** Baggy straight-leg jeans, dark wash
+*   **Outerwear:** Vintage black denim jacket (worn open)
+*   **Shoes:** Black combat boots
+*   **Accessories:** Black crossbody bag
+
+**Outfit 2: Effortless Casual**
+*   **Top:** Graphic Tee — 2003 Tour Bootleg Style (tucked in slightly)
+*   **Bottoms:** Wide-leg khaki trousers
+*   **Shoes:** Chunky white sneakers
+*   **Accessories:** Brown leather belt
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
-
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('baggy dark wash jeans and black combat boots', load_listings()[5]))"
+Found the absolute holy grail of 2003 tour bootleg style tees while thrifting today and my grunge era heart is so happy.
+Throwing this on with some baggy dark wash jeans and black combat boots for the ultimate effortlessly cool vibe.
+Just listed this graphic tee over on my depop for $24.0—grab it before I change my mind and keep it!
 ```
 
 ---
