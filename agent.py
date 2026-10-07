@@ -16,7 +16,7 @@ Build and test your three tools in `tools.py` first. Then come here.
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
-from generate import ModelUnavailable
+from generate import generate, ModelUnavailable
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -106,9 +106,77 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         than a stack trace. The import is already at the top of this file.
     """
     session = new_session(query, wardrobe)
+    iterations = 0
 
-    # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
+    # step 1: parse the query into description, size, max_price
+    iterations += 1
+    trace.check_iterations(iterations)
+
+    parse_prompt = (
+        f"Extract three things from this thrift search query: {query!r}\n\n"
+        f"Return ONLY a JSON object with these keys:\n"
+        f'  "description": a string of keywords describing the item (required)\n'
+        f'  "size": the size string if mentioned, or null\n'
+        f'  "max_price": the maximum price as a number if mentioned, or null\n\n'
+        f"Example: {{\"description\": \"vintage graphic tee\", \"size\": \"M\", \"max_price\": 30}}"
+    )
+    raw = generate(parse_prompt, temperature=0.0)
+
+    # pull the JSON out even if the model wrapped it in markdown fences
+    import json, re as _re
+    match = _re.search(r'\{.*\}', raw, _re.DOTALL)
+    if match:
+        parsed = json.loads(match.group())
+    else:
+        parsed = {"description": query, "size": None, "max_price": None}
+
+    session["parsed"] = parsed
+
+    # step 2: search
+    iterations += 1
+    trace.check_iterations(iterations)
+
+    results = search_listings(
+        description=parsed.get("description", query),
+        size=parsed.get("size"),
+        max_price=parsed.get("max_price"),
+    )
+    session["search_results"] = results
+
+    # branch: nothing found → stop here
+    if not results:
+        hints = []
+        if parsed.get("size"):
+            hints.append(f"try removing the size filter (you asked for {parsed['size']})")
+        if parsed.get("max_price"):
+            hints.append(f"try raising the price ceiling (you asked for under ${parsed['max_price']})")
+        hints.append("try different keywords")
+        session["error"] = (
+            f"No listings matched your query. You could: {'; or '.join(hints)}."
+        )
+        return session
+
+    # step 3: pick the best result
+    session["selected_item"] = results[0]
+
+    # step 4: suggest outfit
+    iterations += 1
+    trace.check_iterations(iterations)
+
+    session["outfit_suggestion"] = suggest_outfit(
+        new_item=session["selected_item"],
+        wardrobe=session["wardrobe"],
+    )
+
+    # step 5: create fit card
+    iterations += 1
+    trace.check_iterations(iterations)
+
+    session["fit_card"] = create_fit_card(
+        outfit=session["outfit_suggestion"],
+        new_item=session["selected_item"],
+    )
+
     return session
 
 
