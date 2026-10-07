@@ -25,9 +25,7 @@ Given a query that matches at least one listing, the agent completes all three
 tool calls and returns a fit card — in at least 4 of 5 tries.
 
 **Why this target:**
-<!-- Why 4 of 5 and not 5 of 5? Something about your search, probably —
-     "my search is a plain keyword match and some phrasings will miss" is a
-     real answer. -->
+The search is keyword-based, not semantic, so if the query is phrased in a way that doesn't overlap with the title, description, or style tags it might come back empty even when there's a match in the data. 4 of 5 leaves room for one bad phrasing without calling the whole thing broken.
 
 ---
 
@@ -37,66 +35,34 @@ Given a query that matches no listings, the agent stops before calling
 `suggest_outfit` and returns a message naming what to change — 5 of 5 tries.
 
 **Why this target:**
-<!-- Why is 5 of 5 reasonable here when criterion 1 isn't? What's different
-     about this path? -->
+This path doesn't involve the model at all — the branch is a plain list length check. There's no randomness, so it should either always work or never work. 5 of 5 is the right target because if it misses once the branch logic is wrong, not unlucky.
 
 ---
 
 ## 3. Something about state
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know that the item your search found is the same item the
-     next tool received? Name something countable or observable.
-
-     This is the criterion people find hardest, because state failure doesn't
-     look like state failure — it looks like a tool problem. Something that
-     compares session["selected_item"] against what actually reached
-     suggest_outfit is the shape you're after. -->
-
-
+Given a query that returns at least one result, `session["selected_item"]["id"]` must match the `id` of the item that was passed into `suggest_outfit` — in 5 of 5 tries.
 
 **Why this target:**
-
-
+State passing is deterministic — the loop either puts the first search result in `session["selected_item"]` and passes it to `suggest_outfit` or it doesn't. There's no model call involved in this step so there's no excuse for it to be flaky. 5 of 5 is correct.
 
 ---
 
 ## 4. Something about the fit card
 
-<!-- YOU WRITE THIS ONE.
-
-     The fit card calls a model, so the same input can produce different words
-     each time. That's not a bug — it's the nature of the tool. So what would
-     make it acceptable?
-
-     Think about what you'd actually be unhappy to see. A caption that never
-     mentions the price? Two different items producing the same opening
-     sentence? A card longer than a caption anyone would post? Any of those can
-     be turned into a number. -->
-
-
+Given a matching query, the fit card must mention the item's price and platform at least once — in at least 4 of 5 tries.
 
 **Why this target:**
-
-
+The model can word the caption differently each time and that's fine, but if it drops the price or the platform it's not doing the job of the tool — the whole point is to tell someone where to buy it and what it costs. 4 of 5 because the model occasionally ignores prompt instructions even when they're clear.
 
 ---
 
 ## 5. Your choice
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. Speed, the empty
-     wardrobe path, what happens when the model can't be reached, whether the
-     search respects a price ceiling — anything, as long as it names a number
-     or an observable outcome. -->
-
-
+Given a query with a price ceiling (e.g. "under $30"), every item in `session["search_results"]` must have a price at or below that ceiling — in 5 of 5 tries.
 
 **Why this target:**
-
-
+Price filtering is a plain comparison — `item["price"] <= max_price`. Either every result passes the filter or the filter has a bug. There's no model involved, no keyword fuzziness, so 5 of 5 is the right bar. If it misses once the implementation is wrong.
 
 ---
 
