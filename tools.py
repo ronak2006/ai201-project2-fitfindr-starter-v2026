@@ -226,10 +226,12 @@ def create_fit_card(outfit: str, new_item: dict) -> str:
     prompt = (
         f"Write a 2-4 sentence social media caption for this thrift find. "
         f"Sound like a real person posting, not a product listing. "
-        f"Mention the item name, its price (${price}), and the platform ({platform}) exactly once each. "
         f"Be specific about the vibe.\n\n"
         f"Item: {name}\n"
-        f"Outfit idea: {outfit}"
+        f"Price: ${price}\n"
+        f"Platform: {platform}\n"
+        f"Outfit idea: {outfit}\n\n"
+        f"Your caption must include the exact price (${price}) and the platform name ({platform})."
     )
 
     return generate(prompt)

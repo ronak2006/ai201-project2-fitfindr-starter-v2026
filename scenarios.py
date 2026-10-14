@@ -44,10 +44,11 @@ SCENARIOS = [
         "criterion": 3,
     },
     {
-        # Fit card: must mention price and platform. Run same query 5x to see
-        # if the model reliably includes both fields across different phrasings.
+        # Fit card: must mention price and platform. Uses a different item than
+        # criterion 1 so the model must read the price from the prompt rather
+        # than relying on familiarity with the same item repeated.
         "name": "fit card mentions price and platform",
-        "query": "vintage graphic tee under $30",
+        "query": "silk slip dress under $45",
         "wardrobe": "example",
         "criterion": 4,
     },

@@ -199,6 +199,12 @@ Just listed this graphic tee over on my depop for $24.0—grab it before I chang
 - *What came back:* A suggestion to use regex to pull out size and price patterns from the string directly.
 - *What I changed:* Used the model instead, with a prompt that asks for JSON with three keys. Regex would break on queries phrased in unexpected ways; the model handles natural language variations like "around thirty dollars" or "fits like a medium" better than pattern matching would.
 
+**Moment 3 (unit 4)**
+
+- *What I asked for:* Help diagnosing why the `create_fit_card` prompt might fail to include price and platform for unfamiliar items even though it passed 5/5 for the same item repeated.
+- *What came back:* Analysis that the original prompt buried the required fields as a parenthetical inside an instruction sentence rather than presenting them as labelled data the model would naturally read and use.
+- *What I changed:* Moved price and platform into the item facts block as explicit `Price:` and `Platform:` fields, and added a closing instruction naming the exact values to include. This makes the required output harder to accidentally omit regardless of which item is being captioned.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -392,24 +398,25 @@ $ python app.py ask 'designer ballgown size XXS under $5' --trace
 
      `python run_eval.py --label after` -->
 
-**What I changed:**
+**What I changed:** Rewrote the `create_fit_card` prompt in `tools.py`. Previously, price and platform appeared only as a parenthetical in an instruction sentence: "Mention the item name, its price ($18.0), and the platform (depop) exactly once each." The new version puts `Price:` and `Platform:` as explicit labelled fields in the item facts block — the same place the model reads `Item:` and `Outfit idea:` from — and adds a closing reminder: "Your caption must include the exact price (${price}) and the platform name ({platform})." Also updated the C4 scenario from the Y2K tee (same item as criterion 1) to a silk slip dress query, so the after run tests whether the model reads the right price from the prompt for a different item rather than relying on familiarity.
 
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** The diagnosis for Criterion 4 identified two weaknesses: (1) the prompt buried the required fields in an instruction rather than presenting them as data, making them easier for the model to rephrase or drop; and (2) testing the same item 5 times meant a passing run could reflect model familiarity with "$18.0" rather than prompt compliance. The change addresses both.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before suggest_outfit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. selected_item id matches what was passed to suggest_outfit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions item's price and platform | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. All search results at or below the price ceiling | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
 **Did it help, and how do I know:**
 
-<!-- If it made things worse, say that. Honestly reported, that earns full
-     credit and is more interesting than one that worked. -->
+The prompt change held up: all 5 C4 fit cards for the silk slip dress ($30.0, depop) included the correct price and platform. This is a harder test than before — the item is different, the price is different, and the model can't rely on seeing "$18.0 / depop" repeatedly to get the answer right. That all 5 passed suggests the change to put price and platform as labelled facts in the item block is doing real work, not just getting lucky.
+
+The headline verdict — MET (5/5) — is identical to the before run. The difference is that the after run earned it against a new item, which is the thing the diagnosis said the before run couldn't prove.
 
 
 
@@ -417,9 +424,13 @@ $ python app.py ask 'designer ballgown size XXS under $5' --trace
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+No criteria were missed in the before run, so there are no missed targets to fix. The honest gaps are in the tests rather than the agent:
+
+**Criterion 1** — The scenario queries a fixed string against a 40-item dataset. A stronger test would vary the query across multiple items and phrasings. The agent would likely still pass, but one scenario run 5× doesn't stress keyword overlap the way varied queries would.
+
+**Criterion 4** — The after run changes to a different item (silk slip dress), which is harder. If the model still passes, that's evidence the prompt change did its job. If it misses, the diagnosis was right and the prompt needs more work. Either outcome is more informative than the before run.
+
+**What I didn't fix:** I didn't test the empty-wardrobe path as a scored criterion. It's covered as a diagnostic scenario, and `suggest_outfit` handles it — but there's no target row for it. If I had another unit I'd add it as Criterion 6 with a target of 5 of 5.
 
 
 
