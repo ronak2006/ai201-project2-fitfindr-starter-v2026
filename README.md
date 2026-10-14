@@ -219,18 +219,72 @@ Just listed this graphic tee over on my depop for $24.0—grab it before I chang
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Matching query completes all three tools | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Impossible query stops before suggest_outfit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. selected_item id matches what was passed to suggest_outfit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions item's price and platform | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. All search results at or below the price ceiling | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
 **Real output from one try**, pasted as text, naming the file and function
 that produced it:
 
-```
+**Criterion 1** — `agent.py::run_agent`, `tools.py::create_fit_card`
 
 ```
+- stopped early: no
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+- search_results: 10
+
+Fit card:
+Honestly obsessed with the pastel 2000s energy of this butterfly print baby tee. I've been styling it with baggy dark denim and an unzipped hoodie for that ultimate off-duty look, and it's yours for just $18.0. Snag it over on my depop before I change my mind and keep it!
+```
+
+**Criterion 2** — `agent.py::run_agent`, branch at `if not results`
+
+```
+- stopped early: yes — No listings matched your query. You could: try removing the size filter (you asked for XXS); or try raising the price ceiling (you asked for under $5); or try different keywords.
+- selected_item: (none)
+- search_results: 0
+
+Trace:
+[1] parse query
+[2] search_listings (via MCP)  out: [] (empty)
+[3] branch: empty results      →    stopping early, no model calls
+```
+
+**Criterion 3** — `agent.py::run_agent`, session wiring at `session["selected_item"] = results[0]`
+
+```
+- stopped early: no
+- selected_item: 90s Track Jacket — Navy/White Stripe ($45.0, poshmark)
+- search_results: 4
+
+Trace:
+[3] select item  out: 90s Track Jacket — Navy/White Stripe ($45.0, poshmark)
+[4] suggest_outfit  in: dict with keys: item  (item = "90s Track Jacket — Navy/White Stripe")
+```
+Same item title at step 3 and step 4 input — session["selected_item"] and the argue passed to suggest_outfit are the same object.
+
+**Criterion 4** — `tools.py::create_fit_card`
+
+```
+Fit card (Try 1):
+Obsessed with the soft retro casual energy of this Y2K Baby Tee with the cutest butterfly print. It's officially live on my depop for just $18.0 so you can lean into that early 2000s proportion game without breaking the bank.
+
+Fit card (Try 4):
+Obsessed with this Y2K Butterfly Baby Tee and how easily it styles with baggy denim or pleated trousers. Just listed it on depop for $18.0 and I'm honestly tempted to keep it for myself.
+```
+Both tries mention $18.0 (price) and depop (platform).
+
+**Criterion 5** — `tools.py::search_listings`, price filter
+
+```
+Query: "denim jacket under $40"
+- search_results: 5
+- selected_item: Vintage Levi's 501 Jeans — Medium Wash ($38.0, depop)
+- Trace [2]: out: 5 items: Vintage Levi's 501 Jeans — Medium Wash, High-Waisted Denim Shorts — Cutoff, Shacket — Olive Canvas … +2 more
+```
+The $42.0 denim jacket (which appears in the "under $50" diagnostic run) is absent — the filter excluded it correctly.
 
 ---
 
