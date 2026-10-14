@@ -121,7 +121,11 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         f'  "max_price": the maximum price as a number if mentioned, or null\n\n'
         f"Example: {{\"description\": \"vintage graphic tee\", \"size\": \"M\", \"max_price\": 30}}"
     )
-    raw = generate(parse_prompt, temperature=0.0)
+    try:
+        raw = generate(parse_prompt, temperature=0.0)
+    except ModelUnavailable as exc:
+        session["error"] = f"Couldn't reach the model to parse your query: {exc}"
+        return session
 
     # pull the JSON out even if the model wrapped it in markdown fences
     import json, re as _re
@@ -132,17 +136,20 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         parsed = {"description": query, "size": None, "max_price": None}
 
     session["parsed"] = parsed
+    trace.step("parse query", inputs={"query": query}, returned=parsed)
 
-    # step 2: search
+    # step 2: search via MCP
     iterations += 1
     trace.check_iterations(iterations)
 
-    results = call_tool("search_listings", {
+    search_inputs = {
         "description": parsed.get("description", query),
         "size": parsed.get("size"),
         "max_price": parsed.get("max_price"),
-    })
+    }
+    results = call_tool("search_listings", search_inputs)
     session["search_results"] = results
+    trace.step("search_listings (via MCP)", inputs=search_inputs, returned=results)
 
     # branch: nothing found → stop here
     if not results:
@@ -155,28 +162,40 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         session["error"] = (
             f"No listings matched your query. You could: {'; or '.join(hints)}."
         )
+        trace.step("branch: empty results", note="stopping early, no model calls")
         return session
 
     # step 3: pick the best result
     session["selected_item"] = results[0]
+    trace.step("select item", returned=session["selected_item"])
 
     # step 4: suggest outfit
     iterations += 1
     trace.check_iterations(iterations)
 
-    session["outfit_suggestion"] = suggest_outfit(
-        new_item=session["selected_item"],
-        wardrobe=session["wardrobe"],
-    )
+    try:
+        session["outfit_suggestion"] = suggest_outfit(
+            new_item=session["selected_item"],
+            wardrobe=session["wardrobe"],
+        )
+    except ModelUnavailable as exc:
+        session["error"] = f"Couldn't reach the model to suggest an outfit: {exc}"
+        return session
+    trace.step("suggest_outfit", inputs={"item": session["selected_item"]["title"]}, returned=session["outfit_suggestion"])
 
     # step 5: create fit card
     iterations += 1
     trace.check_iterations(iterations)
 
-    session["fit_card"] = create_fit_card(
-        outfit=session["outfit_suggestion"],
-        new_item=session["selected_item"],
-    )
+    try:
+        session["fit_card"] = create_fit_card(
+            outfit=session["outfit_suggestion"],
+            new_item=session["selected_item"],
+        )
+    except ModelUnavailable as exc:
+        session["error"] = f"Couldn't reach the model to create a fit card: {exc}"
+        return session
+    trace.step("create_fit_card", inputs={"item": session["selected_item"]["title"]}, returned=session["fit_card"])
 
     return session
 
