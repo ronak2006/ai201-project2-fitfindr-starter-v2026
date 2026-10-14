@@ -308,15 +308,23 @@ The $42.0 denim jacket (which appears in the "under $50" diagnostic run) is abse
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | Matching query completes all three tools | 4 of 5 | MET (5/5) | All 5 tries returned a fit card. Stopped early: no, on every try. |
+| 2 | Impossible query stops before suggest_outfit | 5 of 5 | MET (5/5) | All 5 tries stopped at the branch. Trace shows only 3 steps, no model call after step 2. |
+| 3 | selected_item id matches what was passed to suggest_outfit | 5 of 5 | MET (5/5) | Trace shows same item title at step 3 (select) and step 4 (suggest_outfit input) every try. State wiring is a direct assignment with no copy, so it can't diverge. |
+| 4 | Fit card mentions item's price and platform | 4 of 5 | MET (5/5) | Checked all 5 fit cards by eye: every one mentions "$18.0" and "depop" at least once. |
+| 5 | All search results at or below the price ceiling | 5 of 5 | MET (5/5) | "denim jacket under $40" returned 5 results; the $42.0 denim jacket visible in the $50-ceiling diagnostic run is absent. Price filter is a plain `<=` comparison so either it works or it doesn't. |
 
 **Diagnoses**
 
+No criteria were missed. Honest assessment of whether targets were too easy:
 
+- **Criterion 1 (4 of 5):** The slack was real — keyword search against a fixed 40-item dataset with a well-phrased query has very little reason to fail. A harder version would use a query where the keyword overlap is borderline, or test across several different queries rather than one repeated five times. The 4-of-5 target was reasonable as a first pass but it never came close to being stressed.
+
+- **Criterion 4 (4 of 5):** This one did the most work. The model reliably included price and platform every time, but the prompt instructs it to do so explicitly. A more interesting test would check whether it still does when the prompt's instructions compete with other constraints — e.g., when the item has an unusual brand name that takes up sentence space. The 4-of-5 target was appropriate for model output, but the scenario (same item every time) didn't expose any real variance.
+
+- **Criteria 2, 3, 5:** These are all deterministic — no model involved, just list length, a dict assignment, and a `<=` filter. Targeting 5 of 5 was correct. A 5-of-5 target on a non-deterministic criterion would be suspicious; here it's the only honest choice.
+
+**What I'd tighten:** Criterion 4. Instead of "mentions price and platform," a tighter version would be: "For 5 different items, the fit card mentions that item's price and platform — not a different item's." The current test runs the same item five times, so a model that had the price memorized from training would pass. Testing five different items would actually exercise the prompt's field-filling, not just the model's priors.
 
 ---
 
