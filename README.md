@@ -281,19 +281,43 @@ that produced it:
 **Happy path**
 
 ```
+$ python app.py ask 'vintage graphic tee under $30' --trace
+[1] parse query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: 10 items: Y2K Baby Tee — Butterfly Print, Graphic Tee — 2003 Tour Bootleg Style, Vintage Band Tee — Faded Grey … +7 more
+[3] select item
+      out: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[4] suggest_outfit
+      in:  dict with keys: item
+      out: Here are 2 specific outfit combinations using the Y2K butterfly baby tee and pieces from your current wardrobe…
+[5] create_fit_card
+      in:  dict with keys: item
+      out: Obsessed with this Y2K butterfly baby tee because the fit is so ridiculously flattering and the print gives of…
 
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+  ...
 ```
 
 **Empty search**
 
 ```
+$ python app.py ask 'designer ballgown size XXS under $5' --trace
+[1] parse query
+      in:  dict with keys: query
+      out: dict with keys: description, size, max_price
+[2] search_listings (via MCP)
+      in:  dict with keys: description, size, max_price
+      out: [] (empty)
+[3] branch: empty results
+      →    stopping early, no model calls
 
+  No listings matched your query. You could: try removing the size filter (you asked for XXS); or try raising the price ceiling (you asked for under $5); or try different keywords.
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
-behaved differently afterwards. If the rewire didn't work, say exactly where it
-broke — the error text and the last thing that worked. That earns the point in
-full. -->
+**On the MCP move:** In `mcp_server.py`, registered `search_listings` as an MCP tool with typed inputs and a description stating the empty-list contract. In `agent.py`, replaced the direct `search_listings(...)` call with `call_tool("search_listings", {...})` from `mcp_client`. The return value was identical — same list of dicts, same ordering — so nothing downstream changed.
 
 
 
